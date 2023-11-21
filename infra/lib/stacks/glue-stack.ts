@@ -33,7 +33,9 @@ export class GlueStack extends cdk.Stack {
       destinationKeyPrefix: 'input/',
     });
 
-    const database = new glueAlpha.Database(this, 'Database');
+    const database = new glueAlpha.Database(this, 'Database', {
+      locationUri: bucket.s3UrlForObject('/output/'),
+    });
 
     const role = new iam.Role(this, 'GlueS3Role', {
       assumedBy: new iam.ServicePrincipal('glue.amazonaws.com'),
@@ -55,13 +57,24 @@ export class GlueStack extends cdk.Stack {
         ),
       ],
     });
+    role.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ['iam:PassRole'],
+        resources: ['*'],
+      })
+    );
+    role.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ['codewhisperer:GenerateRecommendations'],
+        resources: ['*'],
+      })
+    );
     bucket.grantReadWrite(role);
 
     const csvClassifier = new glue.CfnClassifier(this, 'CSVClassifier', {
       csvClassifier: {
         name: `${ns.toLowerCase()}-csv-classifier`,
-        containsHeader: 'PRESENT',
-        header: ['movieId', 'title', 'genres'],
+        containsHeader: 'UNKNOWN',
         delimiter: ',',
         quoteSymbol: '"',
       },
@@ -70,7 +83,7 @@ export class GlueStack extends cdk.Stack {
       name: `${ns}-s3-crawler`,
       role: role.roleArn,
       databaseName: database.databaseName,
-      tablePrefix: `${ns.toLowerCase()}-`,
+      tablePrefix: `${ns.toLowerCase()}_`,
       schemaChangePolicy: {
         updateBehavior: 'UPDATE_IN_DATABASE',
         deleteBehavior: 'DEPRECATE_IN_DATABASE',
