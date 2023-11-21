@@ -1,11 +1,13 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as s3d from 'aws-cdk-lib/aws-s3-deployment';
 import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as glue from 'aws-cdk-lib/aws-glue';
 import * as glueAlpha from '@aws-cdk/aws-glue-alpha';
+import path = require('path');
 
 export class GlueStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -25,6 +27,11 @@ export class GlueStack extends cdk.Stack {
       s3.EventType.OBJECT_CREATED,
       new s3n.SqsDestination(queue)
     );
+    new s3d.BucketDeployment(this, 'BucketDeployment', {
+      sources: [s3d.Source.asset(path.resolve(__dirname, '..', '..', 'data'))],
+      destinationBucket: bucket,
+      destinationKeyPrefix: 'input/',
+    });
 
     const database = new glueAlpha.Database(this, 'Database');
 
@@ -35,6 +42,11 @@ export class GlueStack extends cdk.Stack {
           this,
           'GlueS3RolePolicy',
           'arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole'
+        ),
+        iam.ManagedPolicy.fromManagedPolicyArn(
+          this,
+          'GlueSagemakerPolicy',
+          'arn:aws:iam::aws:policy/service-role/AmazonSageMakerServiceCatalogProductsGlueServiceRolePolicy'
         ),
         iam.ManagedPolicy.fromManagedPolicyArn(
           this,
