@@ -1,0 +1,6 @@
+[app]
+ns="GlueAthenaDemo"
+stage="Dev"
+
+[aws]
+region="ap-northeast-2"
